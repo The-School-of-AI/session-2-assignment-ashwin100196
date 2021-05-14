@@ -1,6 +1,8 @@
 # KINDLY GO THROUGH TEST FILE TO UNDERSTAND
 from typing import List
 import time
+import gc
+import sys
 
 # Here in this code we will be leaking memory because we are creating cyclic reference.
 # Find that we are indeed making cyclic references.
@@ -14,6 +16,11 @@ class Something(object):
         super().__init__()
         self.something_new = None
 
+    def __repr__(self):
+        return 'Something : {0}'.format(str(id(self)))
+
+    def __str__(self):
+        return '<Something {0}>'.format(str(id(self)))
 
 class SomethingNew(object):
 
@@ -22,19 +29,25 @@ class SomethingNew(object):
         self.i = i
         self.something = something
 
+    def __repr__(self):
+        return 'SomethingNew of index {0}: '.format(str(self.i), str(id(self)))
+
+    def __str__(self):
+        return '<SomethingNew[{0}] {1}>'.format(str(self.i), str(id(self)))
 
 def add_something(collection: List[Something], i: int):
     something = Something()
     something.something_new = SomethingNew(i, something)
     collection.append(something)
 
-def reserved_Function():
+def reserved_function():
     # to be used in future if required
     pass
 
 def clear_memory(collection: List[Something]):
-    # you probably need to add some comment here
+    # clear the list and its elements from memory
     collection.clear()
+    gc.collect() # removes the objects still in memory due to cyclic references
 
 
 def critical_function():
@@ -62,4 +75,56 @@ def compare_strings_old(n):
 
 # YOU NEED TO CHANGE THIS PROGRAM
 def compare_strings_new(n):
-    time.sleep(6) # remove this line, this is just to simulate your "slow" code
+    # comparison is being done by interning the string
+    a = sys.intern('a long string that is not intered' * 200)
+    b = sys.intern('a long string that is not intered' * 200)
+    for i in range(n):
+        if a is b:
+            pass
+        if 'd' in a:
+            pass
+
+# comparison is being done by interning the string
+def compare_strings_new_interned(n):
+    a = sys.intern('a long string that is not intered' * 200)
+    b = sys.intern('a long string that is not intered' * 200)
+    for i in range(n):
+        if a is b:
+            pass
+        if 'd' in a:
+            pass
+
+# comparison is being done by interning the hashes of the string
+def compare_strings_new_hash_interned(n):
+    a = 'a long string that is not intered' * 200
+    b = 'a long string that is not intered' * 200
+    hash_a = sys.intern(str(hash(a)))
+    hash_b = sys.intern(str(hash(b)))
+    for i in range(n):
+        if a is b:
+            pass
+        if 'd' in a:
+            pass
+
+# comparison is being done by hashing, turned out to be slightly faster than interning the string using sys.intern
+def compare_strings_new_hash(n):
+    a = 'a long string that is not intered' * 200
+    b = 'a long string that is not intered' * 200
+    hash_a = hash(a)
+    hash_b = hash(b)
+    for i in range(n):
+        if a is b:
+            pass
+        if 'd' in a:
+            pass
+
+if __name__ == '__main__':
+    loops = 25
+    exper = 3
+    n = 10000000
+
+    for i in range(exper):
+        for j in range(loops):
+            compare_strings_new_interned(n)
+            compare_strings_new_hash(n)
+            compare_strings_new_hash_interned(n)
